@@ -115,10 +115,8 @@ def webhook():
                         logging.info(f"Sending carousel message: {carousel_message}")
                         line_bot_api.reply_message(
                             event["replyToken"], 
-                            [
                             set_quick_reply_message(f"「{text}」の検索結果やで", name),
                             carousel_message
-                            ]
                         )
 
                         return jsonify({"message": f"「{text}」の検索結果やで"}), 200
