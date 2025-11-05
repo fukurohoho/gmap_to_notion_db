@@ -36,6 +36,8 @@ def webhook():
         event = data["events"][0]
         if event["type"] == "message" and event["message"]["type"] == "text":
             text = event["message"]["text"]
+            logging.info(f"Received text: {text}")
+            print(f"{text} を受信したで")
 
             if text.startswith(f"{name} place"):
                 try:
