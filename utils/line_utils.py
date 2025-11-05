@@ -19,12 +19,12 @@ def show_places_carousel(places: list[dict], name="DBくん"):
             )
         )
     carousel_template_message = TemplateSendMessage(
-        alt_text="場所を選択してください",
+        alt_text="場所を選択するんやで",
         template=CarouselTemplate(columns=columns_list),
     )
     return carousel_template_message
 
-def set_quick_reply_message(name: str):
+def set_quick_reply_message(text: str, name: str):
     language_list = ["使い方を見る", "DBのURLを表示する"]
     items = [
         QuickReplyButton(
@@ -36,6 +36,6 @@ def set_quick_reply_message(name: str):
             )
         ),
     ]
-    messages = TextSendMessage(text="", quick_reply=QuickReply(items=items))
+    messages = TextSendMessage(text=text, quick_reply=QuickReply(items=items))
     return messages
 

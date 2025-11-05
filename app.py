@@ -55,10 +55,7 @@ def webhook():
                         notion_url = write_data_to_notion(place)
                         line_bot_api.reply_message(
                             event["replyToken"],
-                            [
-                            TextSendMessage(text=f"「{place['店名']}」を登録したで\n{notion_url}"),
-                            set_quick_reply_message(name)
-                            ]
+                            set_quick_reply_message(f"「{place['店名']}」を登録したで\n{notion_url}", name)
                         )
 
                         return (
@@ -74,10 +71,7 @@ def webhook():
                         places = []
                         line_bot_api.reply_message(
                             event["replyToken"], 
-                            [
-                            TextSendMessage(text="エラー😭もう1回検索から行ってな"),
-                            set_quick_reply_message(name)
-                            ]
+                            set_quick_reply_message("エラー😭もう1回検索から行ってな", name)
                         )
 
                         return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
@@ -93,10 +87,7 @@ def webhook():
                         )
                         line_bot_api.reply_message(
                             event["replyToken"], 
-                            [
-                            TextSendMessage(text=how_to_use),
-                            set_quick_reply_message(name)
-                            ]
+                            set_quick_reply_message(how_to_use, name)
                         )
 
 
@@ -105,10 +96,7 @@ def webhook():
                     elif query == "DBのURLを表示する":  # DB URLの表示
                         line_bot_api.reply_message(
                             event["replyToken"],
-                            [
-                            TextSendMessage(text=f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"),
-                            set_quick_reply_message(name)
-                            ]
+                            set_quick_reply_message(f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}", name)
                         )
 
                         return (
@@ -128,8 +116,8 @@ def webhook():
                         line_bot_api.reply_message(
                             event["replyToken"], 
                             [
-                            carousel_message,
-                            set_quick_reply_message(name)
+                            set_quick_reply_message(f"「{text}」の検索結果やで", name),
+                            carousel_message
                             ]
                         )
 
@@ -138,10 +126,7 @@ def webhook():
                 logging.error(f"Error: {e}")
                 line_bot_api.reply_message(
                     event["replyToken"],
-                    [
-                    TextSendMessage(text="エラー😭もう1回検索から行ってな"),
-                    set_quick_reply_message(name)
-                    ]
+                    set_quick_reply_message("エラー😭もう1回検索から行ってな", name)
                 )
                 return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
     return jsonify({"message": ""}), 200
