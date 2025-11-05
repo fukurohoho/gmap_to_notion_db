@@ -28,7 +28,6 @@ h = logging.StreamHandler(sys.stdout)
 h.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
 logger.addHandler(h)
 logger.setLevel(logging.INFO) 
-logging.info("Logger initialized")
 
 places = []
 name = "DBくん"
@@ -36,9 +35,6 @@ name = "DBくん"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    logging.info(">>> /webhook called")
-    logging.info("Headers: %s", dict(request.headers))
-    
     global places
     data = request.json
     logging.info(f"Received data: {data}")
@@ -49,95 +45,105 @@ def webhook():
             text = event["message"]["text"]
             logging.info(f"Received text: {text}")
 
-            if text.startswith(f"{name} place"):
-                try:
-                    place_index = int(text.replace(f"{name} place", "").strip())
-                    place = places[place_index]
-                    logging.info(f"Selected place: {place}")
+            try:
+                if text.startswith(f"{name} place"):
+                    try:
+                        place_index = int(text.replace(f"{name} place", "").strip())
+                        place = places[place_index]
+                        logging.info(f"Selected place: {place}")
 
-                    notion_url = write_data_to_notion(place)
-                    line_bot_api.reply_message(
-                        event["replyToken"],
-                        [
-                        TextSendMessage(text=f"「{place['店名']}」を登録したで\n{notion_url}"),
-                        set_quick_reply_message(name)
-                        ]
-                    )
+                        notion_url = write_data_to_notion(place)
+                        line_bot_api.reply_message(
+                            event["replyToken"],
+                            [
+                            TextSendMessage(text=f"「{place['店名']}」を登録したで\n{notion_url}"),
+                            set_quick_reply_message(name)
+                            ]
+                        )
 
-                    return (
-                        jsonify(
-                            {
-                                "message": f"「{place['店名']}」を登録したで\n{notion_url}"
-                            }
-                        ),
-                        200,
-                    )
-                except ValueError:
-                    logging.error(f"Invalid place index: {text}")
-                    places = []
-                    line_bot_api.reply_message(
-                        event["replyToken"], 
-                        [
-                        TextSendMessage(text="エラー😭もう1回検索から行ってな"),
-                        set_quick_reply_message(name)
-                        ]
-                    )
+                        return (
+                            jsonify(
+                                {
+                                    "message": f"「{place['店名']}」を登録したで\n{notion_url}"
+                                }
+                            ),
+                            200,
+                        )
+                    except ValueError:
+                        logging.error(f"Invalid place index: {text}")
+                        places = []
+                        line_bot_api.reply_message(
+                            event["replyToken"], 
+                            [
+                            TextSendMessage(text="エラー😭もう1回検索から行ってな"),
+                            set_quick_reply_message(name)
+                            ]
+                        )
 
-                    return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
+                        return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
 
-            elif text.startswith(name):
-                query = text.replace(name, "").strip()
-                if query == "使い方を見る":  # 使い方の説明
-                    how_to_use = dedent(
-                        f"""
-                    まず、「{name} (知りたい場所)」で話しかけるねん。
-                    そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
-                    """
-                    )
-                    line_bot_api.reply_message(
-                        event["replyToken"], 
-                        [
-                        TextSendMessage(text=how_to_use),
-                        set_quick_reply_message(name)
-                        ]
-                    )
+                elif text.startswith(name):
+                    query = text.replace(name, "").strip()
+                    if query == "使い方を見る":  # 使い方の説明
+                        how_to_use = dedent(
+                            f"""
+                        まず、「{name} (知りたい場所)」で話しかけるねん。
+                        そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
+                        """
+                        )
+                        line_bot_api.reply_message(
+                            event["replyToken"], 
+                            [
+                            TextSendMessage(text=how_to_use),
+                            set_quick_reply_message(name)
+                            ]
+                        )
 
 
-                    return jsonify({"message": "使い方を見る"}), 200
+                        return jsonify({"message": "使い方を見る"}), 200
 
-                elif query == "DBのURLを表示する":  # DB URLの表示
-                    line_bot_api.reply_message(
-                        event["replyToken"],
-                        [
-                        TextSendMessage(text=f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"),
-                        set_quick_reply_message(name)
-                        ]
-                    )
+                    elif query == "DBのURLを表示する":  # DB URLの表示
+                        line_bot_api.reply_message(
+                            event["replyToken"],
+                            [
+                            TextSendMessage(text=f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"),
+                            set_quick_reply_message(name)
+                            ]
+                        )
 
-                    return (
-                        jsonify(
-                            {
-                                "message": f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"
-                            }
-                        ),
-                        200,
-                    )
+                        return (
+                            jsonify(
+                                {
+                                    "message": f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"
+                                }
+                            ),
+                            200,
+                        )
 
-                else:  # 場所検索
-                    places = search_and_suggest_places(query)
-                    logging.info(f"Found places: {places}")
-                    carousel_message = show_places_carousel(places, name)
-                    logging.info(f"Sending carousel message: {carousel_message}")
-                    line_bot_api.reply_message(
-                        event["replyToken"], 
-                        [
-                        carousel_message,
-                        set_quick_reply_message(name)
-                        ]
-                    )
+                    else:  # 場所検索
+                        places = search_and_suggest_places(query)
+                        logging.info(f"Found places: {places}")
+                        carousel_message = show_places_carousel(places, name)
+                        logging.info(f"Sending carousel message: {carousel_message}")
+                        line_bot_api.reply_message(
+                            event["replyToken"], 
+                            [
+                            carousel_message,
+                            set_quick_reply_message(name)
+                            ]
+                        )
 
-                    return jsonify({"message": f"「{text}」の検索結果やで"}), 200
-
+                        return jsonify({"message": f"「{text}」の検索結果やで"}), 200
+            except Exception as e:
+                logging.error(f"Error: {e}")
+                line_bot_api.reply_message(
+                    event["replyToken"],
+                    [
+                    TextSendMessage(text="エラー😭もう1回検索から行ってな"),
+                    set_quick_reply_message(name)
+                    ]
+                )
+                return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
     return jsonify({"message": ""}), 200
 
 

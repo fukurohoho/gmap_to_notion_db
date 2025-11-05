@@ -55,7 +55,9 @@ def format_place_info(place: dict) -> dict:
         r"日本、〒\d+-\d+", " ", place["formatted_address"]
     ).strip()
 
-    info_dict["概要"] = place.get("editorial_summary", "").get("overview", "")
+    info_dict["概要"] = place.get("editorial_summary", "")
+    if not isinstance(info_dict["概要"], str):
+        info_dict["概要"] = info_dict["概要"].get("overview", "")
 
     # 定休日をとってくる
     buisiness_days = place.get("current_opening_hours", {}).get("weekday_text", [])
@@ -85,4 +87,4 @@ def search_and_suggest_places(query: str, max_results: int = 10) -> list[dict]:
 
 
 if __name__ == "__main__":
-    pprint.pprint(search_and_suggest_places("マクド　百万遍"))
+    pprint.pprint(search_and_suggest_places("松屋百万遍"))
