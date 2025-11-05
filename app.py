@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "."))
 from dotenv import load_dotenv
 
 from utils.line_utils import show_places_carousel
-# from utils.map_utils import search_and_suggest_places
+from utils.map_utils import search_and_suggest_places
 from utils.notion_utils import write_data_to_notion
 
 load_dotenv()
@@ -34,9 +34,6 @@ def webhook():
         event = data["events"][0]
         if event["type"] == "message" and event["message"]["type"] == "text":
             text = event["message"]["text"].replace(name, "").strip()
-
-            # クイックリプライメッセージを設定
-            set_quick_reply_message(event.reply_token)
 
             if text.startswith(f"{name} place"):
                 try:
@@ -80,6 +77,10 @@ def webhook():
                         event.reply_token,
                         f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}",
                     )
+
+                    # クイックリプライメッセージを設定
+                    set_quick_reply_message(event.reply_token)
+                    
                     return (
                         jsonify(
                             {
@@ -95,8 +96,15 @@ def webhook():
                     carousel_message = show_places_carousel(places, name)
                     logging.info(f"Sending carousel message: {carousel_message}")
                     reply_message(event.reply_token, messages=carousel_message)
+
+                    # クイックリプライメッセージを設定
+                    set_quick_reply_message(event.reply_token)
+
                     return jsonify({"message": f"「{text}」の検索結果やで"}), 200
 
+
+    # クイックリプライメッセージを設定
+    set_quick_reply_message(event.reply_token)
     return jsonify({"message": ""}), 200
 
 
