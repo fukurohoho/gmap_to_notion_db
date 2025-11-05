@@ -44,6 +44,7 @@ def webhook():
         if event["type"] == "message" and event["message"]["type"] == "text":
             text = event["message"]["text"]
             logging.info(f"Received text: {text}")
+            logger.info(f"replytoken: {event['replyToken']}")
 
             try:
                 if text.startswith(f"{name} place"):
