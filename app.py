@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request
 sys.path.append(os.path.join(os.path.dirname(__file__), "."))
 from dotenv import load_dotenv
 
-from utils.line_utils import show_places_carousel
+from utils.line_utils import show_places_carousel, set_quick_reply_message
 from utils.map_utils import search_and_suggest_places
 from utils.notion_utils import write_data_to_notion
 
@@ -26,14 +26,13 @@ name = "DBくん"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-
     data = request.json
     logging.info(f"Received data: {data}")
 
     if "events" in data and len(data["events"]) > 0:
         event = data["events"][0]
         if event["type"] == "message" and event["message"]["type"] == "text":
-            text = event["message"]["text"].replace(name, "").strip()
+            text = event["message"]["text"]
 
             if text.startswith(f"{name} place"):
                 try:
@@ -49,7 +48,7 @@ def webhook():
 
                     # クイックリプライメッセージを設定
                     set_quick_reply_message(event.reply_token)
-                    
+
                     return (
                         jsonify(
                             {
@@ -118,22 +117,6 @@ def webhook():
     # クイックリプライメッセージを設定
     set_quick_reply_message(event.reply_token)
     return jsonify({"message": ""}), 200
-
-
-def set_quick_reply_message(reply_token):
-    language_list = ["使い方を見る", "DBのURLを表示する"]
-    items = [
-        QuickReplyButton(
-            action=MessageAction(label=f"使い方を見る", text=f"{name} 使い方を見る")
-        ),
-        QuickReplyButton(
-            action=MessageAction(
-                label=f"DBのURLを表示する", text=f"{name} DBのURLを表示する"
-            )
-        ),
-    ]
-    messages = TextSendMessage(text="", quick_reply=QuickReply(items=items))
-    line_bot_api.reply_message(reply_token, messages)
 
 
 if __name__ == "__main__":
