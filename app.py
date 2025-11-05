@@ -1,33 +1,42 @@
 import logging
 import os
+import sys
+from textwrap import dedent
 
 import requests
 from flask import Flask, jsonify, request
-from reply_generator import generate_reply
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "."))
+from dotenv import load_dotenv
 
 from utils.line_utils import show_places_carousel
-from utils.map_utils import search_and_suggest_places
+# from utils.map_utils import search_and_suggest_places
 from utils.notion_utils import write_data_to_notion
+
+load_dotenv()
 
 app = Flask(__name__)
 
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
 logging.basicConfig(level=logging.INFO)
+places = []
+name = "DBくん"
 
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    name = "DBくん"
 
     data = request.json
-    places = []
     logging.info(f"Received data: {data}")
 
     if "events" in data and len(data["events"]) > 0:
         event = data["events"][0]
         if event["type"] == "message" and event["message"]["type"] == "text":
             text = event["message"]["text"].replace(name, "").strip()
+
+            # クイックリプライメッセージを設定
+            set_quick_reply_message(event.reply_token)
 
             if text.startswith(f"{name} place"):
                 try:
@@ -36,21 +45,57 @@ def webhook():
                     logging.info(f"Selected place: {place}")
 
                     notion_url = write_data_to_notion(place)
-                    reply_message(event.reply_token, f"「{place['店名']}」を登録したよ\n{notion_url}")
-                    return jsonify({"message": f"「{place['店名']}」を登録したよ\n{notion_url}"}), 200
+                    reply_message(
+                        event.reply_token,
+                        f"「{place['店名']}」を登録したで\n{notion_url}",
+                    )
+                    return (
+                        jsonify(
+                            {
+                                "message": f"「{place['店名']}」を登録したで\n{notion_url}"
+                            }
+                        ),
+                        200,
+                    )
                 except ValueError:
                     logging.error(f"Invalid place index: {text}")
                     places = []
-                    reply_message(event.reply_token, "エラー！もう1回検索から行ってな")
-                    return jsonify({"message": "エラー！もう1回検索から行ってな"}), 400
+                    reply_message(event.reply_token, "エラー😭もう1回検索から行ってな")
+                    return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
 
             elif text.startswith(name):
-                places = search_and_suggest_places(text)
-                logging.info(f"Found places: {places}")
-                carousel_message = show_places_carousel(places, name)
-                logging.info(f"Sending carousel message: {carousel_message}")
-                line_bot_api.reply_message(event.reply_token, messages=carousel_message)
-                return jsonify({"message": f"「{text}」の検索結果やで"}), 200
+                query = text.replace(name, "").strip()
+                if query == "使い方を見る":  # 使い方の説明
+                    how_to_use = dedent(
+                        """
+                    まず、「{name} (知りたい場所)」で話しかけるねん。
+                    そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
+                    """
+                    )
+                    reply_message(event.reply_token, how_to_use)
+                    return jsonify({"message": "使い方を見る"}), 200
+
+                elif query == "DBのURLを表示する":  # DB URLの表示
+                    reply_message(
+                        event.reply_token,
+                        f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}",
+                    )
+                    return (
+                        jsonify(
+                            {
+                                "message": f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"
+                            }
+                        ),
+                        200,
+                    )
+
+                else:  # 場所検索
+                    places = search_and_suggest_places(query)
+                    logging.info(f"Found places: {places}")
+                    carousel_message = show_places_carousel(places, name)
+                    logging.info(f"Sending carousel message: {carousel_message}")
+                    reply_message(event.reply_token, messages=carousel_message)
+                    return jsonify({"message": f"「{text}」の検索結果やで"}), 200
 
     return jsonify({"message": ""}), 200
 
@@ -70,6 +115,22 @@ def reply_message(reply_token, text):
 
     response = requests.post(url, headers=headers, json=payload)
     logging.info(f"LINE API response: {response.status_code} {response.text}")
+
+
+def set_quick_reply_message(reply_token):
+    language_list = ["使い方を見る", "DBのURLを表示する"]
+    items = [
+        QuickReplyButton(
+            action=MessageAction(label=f"使い方を見る", text=f"{name} 使い方を見る")
+        ),
+        QuickReplyButton(
+            action=MessageAction(
+                label=f"DBのURLを表示する", text=f"{name} DBのURLを表示する"
+            )
+        ),
+    ]
+    messages = TextSendMessage(text="", quick_reply=QuickReply(items=items))
+    reply_message(reply_token, messages)
 
 
 if __name__ == "__main__":
