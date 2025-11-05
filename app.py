@@ -2,6 +2,8 @@ import logging
 import os
 import sys
 from textwrap import dedent
+from linebot.models import TextSendMessage
+from linebot.api import LineBotApi
 
 import requests
 from flask import Flask, jsonify, request
@@ -26,6 +28,7 @@ name = "DBくん"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    global places
     data = request.json
     logging.info(f"Received data: {data}")
 
@@ -42,12 +45,12 @@ def webhook():
 
                     notion_url = write_data_to_notion(place)
                     line_bot_api.reply_message(
-                        event.reply_token,
-                        f"「{place['店名']}」を登録したで\n{notion_url}",
+                        event["replyToken"],
+                        [
+                        TextSendMessage(text=f"「{place['店名']}」を登録したで\n{notion_url}"),
+                        set_quick_reply_message(name)
+                        ]
                     )
-
-                    # クイックリプライメッセージを設定
-                    set_quick_reply_message(event.reply_token)
 
                     return (
                         jsonify(
@@ -60,10 +63,13 @@ def webhook():
                 except ValueError:
                     logging.error(f"Invalid place index: {text}")
                     places = []
-                    line_bot_api.reply_message(event.reply_token, "エラー😭もう1回検索から行ってな")
-
-                    # クイックリプライメッセージを設定
-                    set_quick_reply_message(event.reply_token)
+                    line_bot_api.reply_message(
+                        event["replyToken"], 
+                        [
+                        TextSendMessage(text="エラー😭もう1回検索から行ってな"),
+                        set_quick_reply_message(name)
+                        ]
+                    )
 
                     return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
 
@@ -76,21 +82,25 @@ def webhook():
                     そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
                     """
                     )
-                    line_bot_api.reply_message(event.reply_token, how_to_use)
+                    line_bot_api.reply_message(
+                        event["replyToken"], 
+                        [
+                        TextSendMessage(text=how_to_use),
+                        set_quick_reply_message(name)
+                        ]
+                    )
 
-                    # クイックリプライメッセージを設定
-                    set_quick_reply_message(event.reply_token)
 
                     return jsonify({"message": "使い方を見る"}), 200
 
                 elif query == "DBのURLを表示する":  # DB URLの表示
                     line_bot_api.reply_message(
-                        event.reply_token,
-                        f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}",
+                        event["replyToken"],
+                        [
+                        TextSendMessage(text=f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"),
+                        set_quick_reply_message(name)
+                        ]
                     )
-
-                    # クイックリプライメッセージを設定
-                    set_quick_reply_message(event.reply_token)
 
                     return (
                         jsonify(
@@ -106,16 +116,16 @@ def webhook():
                     logging.info(f"Found places: {places}")
                     carousel_message = show_places_carousel(places, name)
                     logging.info(f"Sending carousel message: {carousel_message}")
-                    line_bot_api.reply_message(event.reply_token, messages=carousel_message)
-
-                    # クイックリプライメッセージを設定
-                    set_quick_reply_message(event.reply_token)
+                    line_bot_api.reply_message(
+                        event["replyToken"], 
+                        [
+                        carousel_message,
+                        set_quick_reply_message(name)
+                        ]
+                    )
 
                     return jsonify({"message": f"「{text}」の検索結果やで"}), 200
 
-
-    # クイックリプライメッセージを設定
-    set_quick_reply_message(event.reply_token)
     return jsonify({"message": ""}), 200
 
 

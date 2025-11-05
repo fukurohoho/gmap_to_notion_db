@@ -24,7 +24,7 @@ def show_places_carousel(places: list[dict], name="DBくん"):
     )
     return carousel_template_message
 
-def set_quick_reply_message(reply_token):
+def set_quick_reply_message(name: str):
     language_list = ["使い方を見る", "DBのURLを表示する"]
     items = [
         QuickReplyButton(
@@ -37,5 +37,5 @@ def set_quick_reply_message(reply_token):
         ),
     ]
     messages = TextSendMessage(text="", quick_reply=QuickReply(items=items))
-    line_bot_api.reply_message(reply_token, messages)
+    return messages
 
