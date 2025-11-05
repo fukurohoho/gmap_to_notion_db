@@ -18,7 +18,7 @@ load_dotenv()
 app = Flask(__name__)
 
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 logging.basicConfig(level=logging.INFO)
 places = []
 name = "DBくん"
@@ -42,10 +42,14 @@ def webhook():
                     logging.info(f"Selected place: {place}")
 
                     notion_url = write_data_to_notion(place)
-                    reply_message(
+                    line_bot_api.reply_message(
                         event.reply_token,
                         f"「{place['店名']}」を登録したで\n{notion_url}",
                     )
+
+                    # クイックリプライメッセージを設定
+                    set_quick_reply_message(event.reply_token)
+                    
                     return (
                         jsonify(
                             {
@@ -57,7 +61,11 @@ def webhook():
                 except ValueError:
                     logging.error(f"Invalid place index: {text}")
                     places = []
-                    reply_message(event.reply_token, "エラー😭もう1回検索から行ってな")
+                    line_bot_api.reply_message(event.reply_token, "エラー😭もう1回検索から行ってな")
+
+                    # クイックリプライメッセージを設定
+                    set_quick_reply_message(event.reply_token)
+
                     return jsonify({"message": "エラー😭もう1回検索から行ってな"}), 400
 
             elif text.startswith(name):
@@ -69,18 +77,22 @@ def webhook():
                     そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
                     """
                     )
-                    reply_message(event.reply_token, how_to_use)
+                    line_bot_api.reply_message(event.reply_token, how_to_use)
+
+                    # クイックリプライメッセージを設定
+                    set_quick_reply_message(event.reply_token)
+
                     return jsonify({"message": "使い方を見る"}), 200
 
                 elif query == "DBのURLを表示する":  # DB URLの表示
-                    reply_message(
+                    line_bot_api.reply_message(
                         event.reply_token,
                         f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}",
                     )
 
                     # クイックリプライメッセージを設定
                     set_quick_reply_message(event.reply_token)
-                    
+
                     return (
                         jsonify(
                             {
@@ -95,7 +107,7 @@ def webhook():
                     logging.info(f"Found places: {places}")
                     carousel_message = show_places_carousel(places, name)
                     logging.info(f"Sending carousel message: {carousel_message}")
-                    reply_message(event.reply_token, messages=carousel_message)
+                    line_bot_api.reply_message(event.reply_token, messages=carousel_message)
 
                     # クイックリプライメッセージを設定
                     set_quick_reply_message(event.reply_token)
@@ -106,23 +118,6 @@ def webhook():
     # クイックリプライメッセージを設定
     set_quick_reply_message(event.reply_token)
     return jsonify({"message": ""}), 200
-
-
-def reply_message(reply_token, text):
-    """LINE にメッセージを返信する"""
-    if not LINE_CHANNEL_ACCESS_TOKEN:
-        logging.error("LINE_CHANNEL_ACCESS_TOKEN is not set!")
-        return
-
-    url = "https://api.line.me/v2/bot/message/reply"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
-    }
-    payload = {"replyToken": reply_token, "messages": [{"type": "text", "text": text}]}
-
-    response = requests.post(url, headers=headers, json=payload)
-    logging.info(f"LINE API response: {response.status_code} {response.text}")
 
 
 def set_quick_reply_message(reply_token):
@@ -138,7 +133,7 @@ def set_quick_reply_message(reply_token):
         ),
     ]
     messages = TextSendMessage(text="", quick_reply=QuickReply(items=items))
-    reply_message(reply_token, messages)
+    line_bot_api.reply_message(reply_token, messages)
 
 
 if __name__ == "__main__":
