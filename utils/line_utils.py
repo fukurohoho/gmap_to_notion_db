@@ -14,7 +14,7 @@ def show_places_carousel(places: list[dict], name="DBくん"):
                 thumbnail_image_url=place["image_url"],
                 actions=[
                     URIAction(label="GoogleMapで表示", uri=place["GoogleMapURL"]),
-                    MessageAction(label="この場所を登録", text=f"{name} place {i}"),
+                    MessageAction(label="この場所を登録", text=f"{name} 「{place['店名']}」に決めたわ"),
                 ],
             )
         )

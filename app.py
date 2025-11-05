@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from textwrap import dedent
 from linebot.models import TextSendMessage
@@ -47,10 +48,15 @@ def webhook():
             logger.info(f"replytoken: {event['replyToken']}")
 
             try:
-                if text.startswith(f"{name} place"):
+                if text.startswith(name) and text.endswith("に決めたわ"):
                     try:
-                        place_index = int(text.replace(f"{name} place", "").strip())
-                        place = places[place_index]
+                        place_name = re.findall(r"「(.*?)」に決めたわ", text)[0].strip()
+                        for place_ in places:
+                            if place_["店名"] == place_name:
+                                place = place_
+                                break
+                        if place is None:
+                            raise ValueError(f"Place not found: {place_name}")
                         logging.info(f"Selected place: {place}")
 
                         notion_url = write_data_to_notion(place)
@@ -85,7 +91,7 @@ def webhook():
                         まず、「{name} (知りたい場所)」で話しかけるねん。
                         そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
                         """
-                        )
+                        ).strip()
                         line_bot_api.reply_message(
                             event["replyToken"], 
                             set_quick_reply_message(how_to_use, name)
@@ -97,13 +103,13 @@ def webhook():
                     elif query == "DBのURLを表示する":  # DB URLの表示
                         line_bot_api.reply_message(
                             event["replyToken"],
-                            set_quick_reply_message(f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}", name)
+                            set_quick_reply_message(f"DBのURLはこれやで\n{os.getenv('DB_URL')}", name)
                         )
 
                         return (
                             jsonify(
                                 {
-                                    "message": f"DBのURLはこれやで\n{os.getenv('NOTION_DB_URL')}"
+                                    "message": f"DBのURLはこれやで\n{os.getenv('DB_URL')}"
                                 }
                             ),
                             200,
