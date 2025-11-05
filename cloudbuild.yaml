@@ -1,0 +1,34 @@
+# cloudbuild.yaml（リポジトリ直下）
+substitutions:
+  SERVICE: gmap-to-notion-db
+  REGION: asia-northeast1
+  IMAGE: gcr.io/$PROJECT_ID/gmap-notion-bot
+
+steps:
+# 1) ビルド
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '-t', '$IMAGE:$COMMIT_SHA', '.']
+
+# 2) プッシュ（GCR/Artifact Registry）
+- name: gcr.io/cloud-builders/docker
+  args: ['push', '$IMAGE:$COMMIT_SHA']
+
+# 3) Cloud Run デプロイ
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  entrypoint: gcloud
+  args:
+    [
+      'run','deploy','$SERVICE',
+      '--image','$IMAGE:$COMMIT_SHA',
+      '--region','$REGION',
+      '--platform','managed',
+      '--allow-unauthenticated',
+      '--set-secrets','LINE_CHANNEL_ACCESS_TOKEN=LINE_CHANNEL_ACCESS_TOKEN:latest',
+      'set-secrets', 'NOTION_API_KEY=NOTION_API_KEY:latest',
+      'set-secrets', 'NOTION_DB_URL=NOTION_DB_URL:latest',
+      'set-secrets', 'DATABASE_ID=DATABASE_ID:latest',
+      'set-secrets', 'GOOGLE_API_KEY=GOOGLE_API_KEY:latest',
+    ]
+
+images:
+- '$IMAGE:$COMMIT_SHA'
