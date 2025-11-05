@@ -1,12 +1,7 @@
 import re
 
-from linebot.models import (
-    CarouselColumn,
-    CarouselTemplate,
-    MessageAction,
-    TemplateSendMessage,
-    URIAction,
-)
+from linebot.models import (CarouselColumn, CarouselTemplate, MessageAction,
+                            TemplateSendMessage, URIAction)
 
 
 def show_places_carousel(places: list[dict], name="DBくん"):
