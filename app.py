@@ -36,6 +36,9 @@ name = "DBくん"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    logging.info(">>> /webhook called")
+    logging.info("Headers: %s", dict(request.headers))
+    
     global places
     data = request.json
     logging.info(f"Received data: {data}")
