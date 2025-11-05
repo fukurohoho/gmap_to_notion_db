@@ -21,7 +21,15 @@ app = Flask(__name__)
 
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger()
+logger.handlers.clear()
+h = logging.StreamHandler(sys.stdout)
+h.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(h)
+logger.setLevel(logging.INFO) 
+logging.info("Logger initialized")
+
 places = []
 name = "DBくん"
 
@@ -37,7 +45,6 @@ def webhook():
         if event["type"] == "message" and event["message"]["type"] == "text":
             text = event["message"]["text"]
             logging.info(f"Received text: {text}")
-            print(f"{text} を受信したで")
 
             if text.startswith(f"{name} place"):
                 try:
@@ -79,7 +86,7 @@ def webhook():
                 query = text.replace(name, "").strip()
                 if query == "使い方を見る":  # 使い方の説明
                     how_to_use = dedent(
-                        """
+                        f"""
                     まず、「{name} (知りたい場所)」で話しかけるねん。
                     そうしたら、{name}がその場所をGoogleMap上で検索して候補を見せるから、その中から登録したいものを選んでな😉
                     """
