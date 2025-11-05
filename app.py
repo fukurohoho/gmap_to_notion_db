@@ -1,11 +1,13 @@
-import os
 import logging
-import requests
-from flask import Flask, request, jsonify
-from reply_generator import generate_reply 
+import os
 
-from utils.map_utils import search_and_suggest_places
+import requests
+from flask import Flask, jsonify, request
+from reply_generator import generate_reply
+
 from utils.line_utils import show_places_carousel
+from utils.map_utils import search_and_suggest_places
+from utils.notion_utils import write_data_to_notion
 
 app = Flask(__name__)
 
@@ -13,7 +15,8 @@ LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
 logging.basicConfig(level=logging.INFO)
 
-@app.route('/webhook', methods=['POST'])
+
+@app.route("/webhook", methods=["POST"])
 def webhook():
     name = "DBくん"
 
@@ -24,7 +27,7 @@ def webhook():
     if "events" in data and len(data["events"]) > 0:
         event = data["events"][0]
         if event["type"] == "message" and event["message"]["type"] == "text":
-            text = event["message"]["text"].replace(name, '').strip()
+            text = event["message"]["text"].replace(name, "").strip()
 
             if text.startswith(f"{name} place"):
                 try:
@@ -32,10 +35,9 @@ def webhook():
                     place = places[place_index]
                     logging.info(f"Selected place: {place}")
 
-                    # ここにNotion処理が入る
-
-                    reply_message(event.reply_token, f"「{place['店名']}」を登録したよ")
-                    return jsonify({"message": f"「{place['店名']}」を登録したよ"}), 200
+                    notion_url = write_data_to_notion(place)
+                    reply_message(event.reply_token, f"「{place['店名']}」を登録したよ\n{notion_url}")
+                    return jsonify({"message": f"「{place['店名']}」を登録したよ\n{notion_url}"}), 200
                 except ValueError:
                     logging.error(f"Invalid place index: {text}")
                     places = []
@@ -62,15 +64,13 @@ def reply_message(reply_token, text):
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
     }
-    payload = {
-        "replyToken": reply_token,
-        "messages": [{"type": "text", "text": text}]
-    }
-    
+    payload = {"replyToken": reply_token, "messages": [{"type": "text", "text": text}]}
+
     response = requests.post(url, headers=headers, json=payload)
     logging.info(f"LINE API response: {response.status_code} {response.text}")
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
